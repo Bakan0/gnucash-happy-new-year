@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
-# new_book_with_opening_balances.py -- Replicate the account structure of a
-# book and apply basis opening balances from the original
+# Utility for creating a new book, for example at the beginning of the year.
 #
-# Copyright (C) 2009, 2010 ParIT Worker Co-operative <transparency@parit.ca>
+# Based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
+#
+# Copyright (C) 2009, 2010 Mark Jenkins, ParIT Worker Co-operative <transparency@parit.ca>
 # Copyright (C) 2024 Quazgar <quazgar@posteo.de>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
+# published by the Free Software Foundation; either version 3 of
 # the License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -22,12 +24,17 @@
 # Boston, MA  02110-1301,  USA       gnu@gnu.org
 #
 # @author Mark Jenkins, ParIT Worker Co-operative <mark@parit.ca>
+# @author Quazgar <quazgar@posteo.de>
 
 # @file
 #   @brief Replicate the account structure of a
 #   book and apply basis opening balances from the original
-#   @author Mark Jenkins, ParIT Worker Co-operative <mark@parit.ca>
-#   @ingroup python_bindings_examples
+
+import argparse
+import os
+from datetime import date
+
+import piecash
 
 from gnucash import (
     Session, Account, Transaction, Split, GncNumeric, SessionOpenMode)
@@ -37,10 +44,6 @@ from gnucash.gnucash_core_c import \
     ACCT_TYPE_CREDIT, ACCT_TYPE_EQUITY, ACCT_TYPE_EXPENSE, ACCT_TYPE_INCOME, \
     ACCT_TYPE_LIABILITY, ACCT_TYPE_MUTUAL, ACCT_TYPE_PAYABLE, \
     ACCT_TYPE_RECEIVABLE, ACCT_TYPE_STOCK, ACCT_TYPE_ROOT, ACCT_TYPE_TRADING
-
-from sys import argv
-from os.path import abspath
-from datetime import date
 
 # This script takes a gnucash url
 # and creates a new file/db at a second url that has the same
@@ -174,12 +177,12 @@ def record_opening_balance(original_account, new_account, new_book,
                 (trans, new_total)
 
 
-def recursivly_build_account_tree(original_parent_account,
-                                  new_parent_account,
-                                  new_book,
-                                  new_commodity_table,
-                                  opening_balance_per_currency,
-                                  account_types_to_open):
+def recursively_build_account_tree(original_parent_account,
+                                   new_parent_account,
+                                   new_book,
+                                   new_commodity_table,
+                                   opening_balance_per_currency,
+                                   account_types_to_open):
 
     for child in original_parent_account.get_children():
         original_account = child
@@ -209,12 +212,12 @@ def recursivly_build_account_tree(original_parent_account,
                                (namespace, mnemonic),
                                )
 
-        recursivly_build_account_tree(original_account,
-                                      new_account,
-                                      new_book,
-                                      new_commodity_table,
-                                      opening_balance_per_currency,
-                                      account_types_to_open)
+        recursively_build_account_tree(original_account,
+                                       new_account,
+                                       new_book,
+                                       new_commodity_table,
+                                       opening_balance_per_currency,
+                                       account_types_to_open)
 
 
 def reconstruct_account_name_with_mnemonic(account_tuple, mnemonic):
@@ -258,7 +261,7 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
                                        opening_trans, opening_amount,
                                        simple_opening_name_used):
     currency = commodtable.lookup(namespace, mnemonic)
-    assert (currency.get_instance() != None)
+    assert (currency.get_instance() is not None)
 
     if simple_opening_name_used:
         account_pieces = reconstruct_account_name_with_mnemonic(
@@ -273,7 +276,7 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
                                                new_book_root, new_book,
                                                currency)
         simple_opening_name_used = True
-        if opening_account == None:
+        if opening_account is None:
             account_pieces = reconstruct_account_name_with_mnemonic(
                 OPENING_BALANCE_ACCOUNT,
                 mnemonic)
@@ -296,22 +299,20 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
     return simple_opening_name_used
 
 
-def main():
+def duplicate_with_opening_balance(old: str, new: str) -> None:
+    """Create a new Gnucash file."""
+    new = os.path.abspath(new)
+    new_sqlite = "sqlite3://" + new
+    if not os.path.exists(new):
+        new_book_session = Session(new_sqlite, SessionOpenMode.SESSION_NEW_STORE)
+        # new_book = new_book_session.get_book()
+        # new_book_session.save()
+        new_book_session.end()
+    else:
+        print("Warnung! Datei \"new\" existiert bereits.")
 
-    if len(argv) < 3:
-        print('not enough parameters')
-        print(
-            'usage: new_book_with_opening_balances.py {source_book_url} {destination_book_url}')
-        print('examples:')
-        print("python3 new_book_with_opening_balances.py '/home/username/test.gnucash' 'sqlite3:///home/username/new_test.gnucash'")
-        print("python3 new_book_with_opening_balances.py '/home/username/test.gnucash' 'xml:///crypthome/username/finances/new_test.gnucash'")
-        return
-
-    # have everything in a try block to unable us to release our hold on stuff to the extent possible
-    try:
-        original_book_session = Session(
-            argv[1], SessionOpenMode.SESSION_NORMAL_OPEN)
-        new_book_session = Session(argv[2], SessionOpenMode.SESSION_NEW_STORE)
+    with (Session(old, SessionOpenMode.SESSION_READ_ONLY) as original_book_session,
+          Session(new_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as new_book_session):
         new_book = new_book_session.get_book()
         new_book_root = new_book.get_root_account()
 
@@ -320,8 +321,11 @@ def main():
         # be trouble later
         new_book_session.save()
 
-        opening_balance_per_currency = {}
-        recursivly_build_account_tree(
+        #######################
+        # Make dict of balances
+        #######################
+        opening_balance_per_currency: dict = {}
+        recursively_build_account_tree(
             original_book_session.get_book().get_root_account(),
             new_book_root,
             new_book,
@@ -344,6 +348,11 @@ def main():
         else:
             simple_opening_name_used = False
 
+        old_book = original_book_session.get_book()
+
+        from IPython import embed
+        embed()
+
         for (namespace, mnemonic), (opening_trans, opening_amount) in \
                 opening_balance_per_currency.items():
             simple_opening_name_used = create_opening_balance_transaction(
@@ -352,17 +361,25 @@ def main():
                 opening_trans, opening_amount,
                 simple_opening_name_used)
 
-        new_book_session.save()
-        new_book_session.end()
-        original_book_session.end()
-    except:
-        if "original_book_session" in locals():
-            original_book_session.end()
 
-        if "new_book_session" in locals():
-            new_book_session.end()
+def _parse_arguments():
+    """Parse the command line."""
+    parser = argparse.ArgumentParser(description="Create a new Gnucash file from the account"
+                                     " balances of an existing file.")
+    parser.add_argument("-i", "--infile", help="Input file (of the old year / booking period).",
+                        type=str, required=True)
+    parser.add_argument('-o', '--outfile', help="Filename where the new file shall be written.",
+                        type=str, required=True)
 
-        raise
+    return parser.parse_args()
+
+
+def main():
+
+    args = _parse_arguments()
+    assert args.infile, "Must give a valid infile."
+    assert args.outfile, "Must give a valid outfile."
+    duplicate_with_opening_balance(old=args.infile, new=args.outfile)
 
 
 if __name__ == "__main__":
