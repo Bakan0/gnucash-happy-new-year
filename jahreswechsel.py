@@ -190,8 +190,6 @@ def recursively_build_account_tree(original_parent_account,
         new_account = Account(new_book)
         # attach new account to its parent
         new_parent_account.append_child(new_account)
-        # from IPython import embed
-        # embed()
 
         # copy simple attributes
         for attribute in ('Name', 'Type', 'Description', 'Notes',
@@ -313,6 +311,15 @@ old : gnucash.Book
 target : gnucash.Book
     The target book for the entries.
     """
+    # Code adapted from
+    # https://github.com/Gnucash/gnucash/blob/stable/bindings/python/example_scripts/rest-api/gnucash_rest.py
+    query = gnucash.Query()
+    query.set_book(old)
+    query.search_for("gncVendor")
+    customers = []
+    for result in query.run():
+        print(gnucash.gnucash_business.Customer(instance=result))
+
 
     from IPython import embed
     embed()
@@ -354,8 +361,6 @@ def duplicate_with_opening_balance(old: str, target: str) -> None:
             opening_balance_per_currency,
             ACCOUNT_TYPES_TO_OPEN
         )
-
-        from IPython import embed; embed()
 
         (namespace, mnemonic) = PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE
         if (namespace, mnemonic) in opening_balance_per_currency:
