@@ -34,8 +34,9 @@ import argparse
 import os
 from datetime import date
 
-import piecash
+# import piecash
 
+import gnucash
 from gnucash import (
     Session, Account, Transaction, Split, GncNumeric, SessionOpenMode)
 from gnucash.gnucash_core_c import \
@@ -189,10 +190,12 @@ def recursively_build_account_tree(original_parent_account,
         new_account = Account(new_book)
         # attach new account to its parent
         new_parent_account.append_child(new_account)
+        # from IPython import embed
+        # embed()
 
         # copy simple attributes
         for attribute in ('Name', 'Type', 'Description', 'Notes',
-                          'Code', 'TaxRelated', 'Placeholder'):
+                          'Code', 'Color', 'TaxRelated', 'Placeholder'):
             # new_account.SetAttribute( original_account.GetAttribute() )
             getattr(new_account, 'Set' + attribute)(
                 getattr(original_account, 'Get' + attribute)())
@@ -299,27 +302,45 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
     return simple_opening_name_used
 
 
-def duplicate_with_opening_balance(old: str, new: str) -> None:
-    """Create a new Gnucash file."""
-    new = os.path.abspath(new)
-    new_sqlite = "sqlite3://" + new
-    if not os.path.exists(new):
-        new_book_session = Session(new_sqlite, SessionOpenMode.SESSION_NEW_STORE)
+def duplicate_business(old: gnucash.Book, target: gnucash.Book):
+    """Duplicate all customers, vendors etc from the ``old`` book to the ``target`` book.
+
+Parameters
+----------
+old : gnucash.Book
+    The original book from where the business entries shall be entered.
+
+target : gnucash.Book
+    The target book for the entries.
+    """
+
+    from IPython import embed
+    embed()
+
+
+def duplicate_with_opening_balance(old: str, target: str) -> None:
+    """Create a target Gnucash file."""
+    target = os.path.abspath(target)
+    target_sqlite = "sqlite3://" + target
+
+    # Create target if it does not exist yet.
+    if not os.path.exists(target):
+        target_book_session = Session(target_sqlite, SessionOpenMode.SESSION_NEW_STORE)
         # new_book = new_book_session.get_book()
         # new_book_session.save()
-        new_book_session.end()
+        target_book_session.end()
     else:
-        print("Warnung! Datei \"new\" existiert bereits.")
+        print(f"Warnung! Datei {target} existiert bereits.")
 
     with (Session(old, SessionOpenMode.SESSION_READ_ONLY) as original_book_session,
-          Session(new_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as new_book_session):
-        new_book = new_book_session.get_book()
-        new_book_root = new_book.get_root_account()
+          Session(target_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as target_book_session):
+        target_book = target_book_session.get_book()
+        target_book_root = target_book.get_root_account()
 
-        commodtable = new_book.get_table()
+        commodtable = target_book.get_table()
         # we discovered that if we didn't have this save early on, there would
         # be trouble later
-        new_book_session.save()
+        target_book_session.save()
 
         #######################
         # Make dict of balances
@@ -327,8 +348,8 @@ def duplicate_with_opening_balance(old: str, new: str) -> None:
         opening_balance_per_currency: dict = {}
         recursively_build_account_tree(
             original_book_session.get_book().get_root_account(),
-            new_book_root,
-            new_book,
+            target_book_root,
+            target_book,
             commodtable,
             opening_balance_per_currency,
             ACCOUNT_TYPES_TO_OPEN
@@ -340,7 +361,7 @@ def duplicate_with_opening_balance(old: str, new: str) -> None:
                 (namespace, mnemonic)]
             simple_opening_name_used = create_opening_balance_transaction(
                 commodtable, namespace, mnemonic,
-                new_book_root, new_book,
+                target_book_root, target_book,
                 opening_trans, opening_amount,
                 False)
             del opening_balance_per_currency[
@@ -350,16 +371,15 @@ def duplicate_with_opening_balance(old: str, new: str) -> None:
 
         old_book = original_book_session.get_book()
 
-        from IPython import embed
-        embed()
-
         for (namespace, mnemonic), (opening_trans, opening_amount) in \
                 opening_balance_per_currency.items():
             simple_opening_name_used = create_opening_balance_transaction(
                 commodtable, namespace, mnemonic,
-                new_book_root, new_book,
+                target_book_root, target_book,
                 opening_trans, opening_amount,
                 simple_opening_name_used)
+
+        duplicate_business(old=old_book, target=target_book)
 
 
 def _parse_arguments():
@@ -368,7 +388,7 @@ def _parse_arguments():
                                      " balances of an existing file.")
     parser.add_argument("-i", "--infile", help="Input file (of the old year / booking period).",
                         type=str, required=True)
-    parser.add_argument('-o', '--outfile', help="Filename where the new file shall be written.",
+    parser.add_argument('-o', '--outfile', help="Filename where the duplicate shall be written.",
                         type=str, required=True)
 
     return parser.parse_args()
@@ -379,7 +399,7 @@ def main():
     args = _parse_arguments()
     assert args.infile, "Must give a valid infile."
     assert args.outfile, "Must give a valid outfile."
-    duplicate_with_opening_balance(old=args.infile, new=args.outfile)
+    duplicate_with_opening_balance(old=args.infile, target=args.outfile)
 
 
 if __name__ == "__main__":
