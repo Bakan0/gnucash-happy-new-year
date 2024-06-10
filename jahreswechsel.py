@@ -38,6 +38,7 @@ from datetime import date
 
 import gnucash
 from gnucash import (
+    gnucash_business,
     Session, Account, Transaction, Split, GncNumeric, SessionOpenMode)
 from gnucash.gnucash_core_c import \
     GNC_DENOM_AUTO, GNC_HOW_DENOM_EXACT, \
@@ -301,7 +302,9 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
 
 
 def duplicate_business(old: gnucash.Book, target: gnucash.Book):
-    """Duplicate all customers, vendors etc from the ``old`` book to the ``target`` book.
+    """Duplicate all customers, vendors etc.
+
+This is done from the ``old`` book to the ``target`` book.
 
 Parameters
 ----------
@@ -313,12 +316,13 @@ target : gnucash.Book
     """
     # Code adapted from
     # https://github.com/Gnucash/gnucash/blob/stable/bindings/python/example_scripts/rest-api/gnucash_rest.py
-    query = gnucash.Query()
-    query.set_book(old)
-    query.search_for("gncVendor")
+    query_old = gnucash.Query()
+    query_old.set_book(old)
+    query_old.search_for("gncVendor")
     customers = []
-    for result in query.run():
-        print(gnucash.gnucash_business.Customer(instance=result))
+    for result in query_old.run():
+        vendor = gnucash_business.Vendor(instance=result)
+        print(vendor.GetName())  # methods: https://code.gnucash.org/docs/STABLE/group__Vendor.html
 
 
     from IPython import embed
