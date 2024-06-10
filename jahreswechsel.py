@@ -355,6 +355,8 @@ def duplicate_with_opening_balance(old: str, target: str) -> None:
             ACCOUNT_TYPES_TO_OPEN
         )
 
+        from IPython import embed; embed()
+
         (namespace, mnemonic) = PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE
         if (namespace, mnemonic) in opening_balance_per_currency:
             opening_trans, opening_amount = opening_balance_per_currency[
