@@ -34,7 +34,7 @@ import argparse
 import os
 from datetime import date
 
-import piecash
+# import piecash
 
 from gnucash import (
     Session, Account, Transaction, Split, GncNumeric, SessionOpenMode)
@@ -309,7 +309,7 @@ def duplicate_with_opening_balance(old: str, new: str) -> None:
         # new_book_session.save()
         new_book_session.end()
     else:
-        print("Warnung! Datei \"new\" existiert bereits.")
+        print(f"Warnung! Datei {new} existiert bereits.")
 
     with (Session(old, SessionOpenMode.SESSION_READ_ONLY) as original_book_session,
           Session(new_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as new_book_session):
@@ -333,6 +333,8 @@ def duplicate_with_opening_balance(old: str, new: str) -> None:
             opening_balance_per_currency,
             ACCOUNT_TYPES_TO_OPEN
         )
+
+        from IPython import embed; embed()
 
         (namespace, mnemonic) = PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE
         if (namespace, mnemonic) in opening_balance_per_currency:
