@@ -322,8 +322,10 @@ target : gnucash.Book
     """
     all_vendors = business.Vendor.get_all(book=old)
 
-    from IPython import embed
-    embed()
+    for vendor in all_vendors:
+        vendor.clone_to(other=target)
+    # from IPython import embed
+    # embed()
 
 
 def duplicate_with_opening_balance(old: str, target: str) -> None:
