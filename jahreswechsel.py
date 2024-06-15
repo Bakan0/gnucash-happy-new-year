@@ -32,6 +32,7 @@
 
 import argparse
 import os
+import sys
 from datetime import date
 
 # import piecash
@@ -46,6 +47,11 @@ from gnucash.gnucash_core_c import \
     ACCT_TYPE_CREDIT, ACCT_TYPE_EQUITY, ACCT_TYPE_EXPENSE, ACCT_TYPE_INCOME, \
     ACCT_TYPE_LIABILITY, ACCT_TYPE_MUTUAL, ACCT_TYPE_PAYABLE, \
     ACCT_TYPE_RECEIVABLE, ACCT_TYPE_STOCK, ACCT_TYPE_ROOT, ACCT_TYPE_TRADING
+
+# autopep8: off
+sys.path.append(".")
+from gnucash_tools import business
+# autopep8: on
 
 # This script takes a gnucash url
 # and creates a new file/db at a second url that has the same
@@ -314,16 +320,7 @@ old : gnucash.Book
 target : gnucash.Book
     The target book for the entries.
     """
-    # Code adapted from
-    # https://github.com/Gnucash/gnucash/blob/stable/bindings/python/example_scripts/rest-api/gnucash_rest.py
-    query_old = gnucash.Query()
-    query_old.set_book(old)
-    query_old.search_for("gncVendor")
-    customers = []
-    for result in query_old.run():
-        vendor = gnucash_business.Vendor(instance=result)
-        print(vendor.GetName())  # methods: https://code.gnucash.org/docs/STABLE/group__Vendor.html
-
+    all_vendors = business.Vendor.get_all(book=old)
 
     from IPython import embed
     embed()
