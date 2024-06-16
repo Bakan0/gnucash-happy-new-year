@@ -76,6 +76,12 @@ other: gnucash.Book
         addr_clone = clone._base.GetAddr()
         addr_clone.SetName(addr_old.GetName())
         addr_clone.SetAddr1(addr_old.GetAddr1())
+        addr_clone.SetAddr2(addr_old.GetAddr2())
+        addr_clone.SetAddr3(addr_old.GetAddr3())
+        addr_clone.SetAddr4(addr_old.GetAddr4())
+        addr_clone.SetPhone(addr_old.GetPhone())
+        addr_clone.SetFax(addr_old.GetFax())
+        addr_clone.SetEmail(addr_old.GetEmail())
 
         self._update_specific(other=clone)
 
@@ -88,12 +94,35 @@ More specifically, by default, the following properties are set already:
 - ID
 - Name
 - Currency
-- Address
+- Address (with all its properties)
 - Active
 
 Everything else should be set in this method.
         """
         pass
+
+
+class Customer(Entity):
+    # gnc_class_name = "gncVendor"
+    gnc_class = gnucash_business.Customer
+
+    def _update_specific(self, other: Customer) -> None:
+        """Set missing properties.
+
+The missing properties are:
+- Notes
+- TaxIncluded
+- Terms
+
+Parameters
+----------
+other: Vendor
+    The entity to update.
+        """
+        # FIXME correct properties.
+        other._base.SetNotes(self._base.GetNotes())
+        other._base.SetTaxIncluded(self._base.GetTaxIncluded())
+        other._base.SetTerms(self._base.GetTerms())
 
 
 class Vendor(Entity):
@@ -113,6 +142,29 @@ Parameters
 other: Vendor
     The entity to update.
         """
+        other._base.SetNotes(self._base.GetNotes())
+        other._base.SetTaxIncluded(self._base.GetTaxIncluded())
+        other._base.SetTerms(self._base.GetTerms())
+
+
+class Employee(Entity):
+    # gnc_class_name = "gncVendor"
+    gnc_class = gnucash_business.Employee
+
+    def _update_specific(self, other: Employee) -> None:
+        """Set missing properties.
+
+The missing properties are:
+- Notes
+- TaxIncluded
+- Terms
+
+Parameters
+----------
+other: Vendor
+    The entity to update.
+        """
+        # FIXME correct properties.
         other._base.SetNotes(self._base.GetNotes())
         other._base.SetTaxIncluded(self._base.GetTaxIncluded())
         other._base.SetTerms(self._base.GetTerms())

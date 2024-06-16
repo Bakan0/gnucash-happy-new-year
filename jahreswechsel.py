@@ -320,10 +320,15 @@ old : gnucash.Book
 target : gnucash.Book
     The target book for the entries.
     """
-    all_vendors = business.Vendor.get_all(book=old)
 
-    for vendor in all_vendors:
-        vendor.clone_to(other=target)
+    for cls in (
+            business.Vendor,
+            business.Customer,
+            business.Employee,
+    ):
+        all_of_them = cls.get_all(book=old)
+        for entity in all_of_them:
+            entity.clone_to(other=target)
     # from IPython import embed
     # embed()
 
