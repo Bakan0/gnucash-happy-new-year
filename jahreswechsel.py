@@ -31,6 +31,7 @@
 #   book and apply basis opening balances from the original
 
 import argparse
+import configparser
 import os
 import sys
 from datetime import date
@@ -401,12 +402,25 @@ def _parse_arguments():
     """Parse the command line."""
     parser = argparse.ArgumentParser(description="Create a new Gnucash file from the account"
                                      " balances of an existing file.")
+    parser.add_argument('-c', '--conf', help="Config file which for additional options."
+                        )
     parser.add_argument("-i", "--infile", help="Input file (of the old year / booking period).",
-                        type=str, required=True)
+                        type=str)
     parser.add_argument('-o', '--outfile', help="Filename where the duplicate shall be written.",
-                        type=str, required=True)
+                        type=str)
 
-    return parser.parse_args()
+    parsed = parser.parse_args()
+
+    if parsed.conf:
+        config = configparser.ConfigParser()
+        config.read_file(open(parsed.conf))
+        parser.set_defaults(**config["DEFAULT"])
+        # from IPython import embed
+        # embed()
+
+        parsed = parser.parse_args()
+
+    return parsed
 
 
 def main():
