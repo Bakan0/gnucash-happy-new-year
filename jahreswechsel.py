@@ -35,6 +35,7 @@ import configparser
 import os
 import sys
 from datetime import date
+from typing import Optional
 
 # import piecash
 
@@ -100,6 +101,7 @@ from gnucash_tools import business
 OPENING_DATE = (1, 1, 2011)  # day, month, year
 
 # possible account types of interest for opening balances
+# https://code.gnucash.org/docs/STABLE/Account_8h_source.html#l00101
 ACCOUNT_TYPES_TO_OPEN = set((
     ACCT_TYPE_BANK,
     ACCT_TYPE_CASH,
@@ -159,6 +161,11 @@ def initialize_split(book, value, account, trans):
 def record_opening_balance(original_account, new_account, new_book,
                            opening_balance_per_currency, commodity_tuple
                            ):
+    """Store data in ``opening_balance_per_currency``.
+
+``opening_balance_per_currency`` is a dict with one entry per currency.  Every value is a tuple
+of a transaction in ``new_book`` and the total balance (a GncNumeric) of that transaction.
+    """
     # create an opening balance if the account type is right
     if new_account.GetType() in ACCOUNT_TYPES_TO_OPEN:
         final_balance = original_account.GetBalance()
@@ -211,7 +218,7 @@ def recursively_build_account_tree(original_parent_account,
         namespace = orig_commodity.get_namespace()
         mnemonic = orig_commodity.get_mnemonic()
         new_commodity = new_commodity_table.lookup(namespace, mnemonic)
-        if new_commodity == None:
+        if new_commodity is None:
             new_commodity = orig_commodity.clone(new_book)
             new_commodity_table.insert(new_commodity)
         new_account.SetCommodity(new_commodity)
@@ -236,15 +243,24 @@ def reconstruct_account_name_with_mnemonic(account_tuple, mnemonic):
     return opening_balance_account_pieces
 
 
-def find_or_make_account(account_tuple, root_account, book,
-                         currency):
+def find_or_make_account(account_tuple, parent_account, book,
+                         currency) -> Optional[Account]:
+    """Return the account at ``account_tuple``.  Create first recursively, if necessary.
+
+Returns
+-------
+
+out : Union[Account, None]
+    The retrieved or created account, if the currency/commodity is correct.  If there is a currency
+    mismatch, return None instead.
+    """
     current_account_name, account_path = account_tuple[0], account_tuple[1:]
-    current_account = root_account.lookup_by_name(current_account_name)
+    current_account = parent_account.lookup_by_name(current_account_name)
     if current_account == None:
         current_account = Account(book)
         current_account.SetName(current_account_name)
         current_account.SetCommodity(currency)
-        root_account.append_child(current_account)
+        parent_account.append_child(current_account)
 
     if len(account_path) > 0:
         return find_or_make_account(account_path, current_account, book,
@@ -252,15 +268,19 @@ def find_or_make_account(account_tuple, root_account, book,
     else:
         account_commod = current_account.GetCommodity()
         if (account_commod.get_mnemonic(),
-            account_commod.get_namespace()) == \
-            (currency.get_mnemonic(),
-             currency.get_namespace()):
+            account_commod.get_namespace()) == (
+                currency.get_mnemonic(),
+                currency.get_namespace()):
             return current_account
         else:
             return None
 
 
 def choke_on_none_for_no_account(opening_account, extra_string):
+    """Raise an exception if ``opening_account`` is None.
+
+The raised exception has ``extra_string`` as a suffix.
+    """
     if opening_account == None:
         raise Exception("account currency and name mismatch, " + extra_string)
 
@@ -268,7 +288,8 @@ def choke_on_none_for_no_account(opening_account, extra_string):
 def create_opening_balance_transaction(commodtable, namespace, mnemonic,
                                        new_book_root, new_book,
                                        opening_trans, opening_amount,
-                                       simple_opening_name_used):
+                                       simple_opening_name_used: bool):
+    """Put the opening balance into an account in the new book."""
     currency = commodtable.lookup(namespace, mnemonic)
     assert (currency.get_instance() is not None)
 
@@ -308,17 +329,18 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
     return simple_opening_name_used
 
 
-def duplicate_business(old: gnucash.Book, target: gnucash.Book):
+def duplicate_business(old: gnucash.Book, target: gnucash.Book) -> None:
     """Duplicate all customers, vendors etc.
+
 
 This is done from the ``old`` book to the ``target`` book.
 
 Parameters
 ----------
-old : gnucash.Book
+old: gnucash.Book
     The original book from where the business entries shall be entered.
 
-target : gnucash.Book
+target: gnucash.Book
     The target book for the entries.
     """
 
@@ -330,12 +352,17 @@ target : gnucash.Book
         all_of_them = cls.get_all(book=old)
         for entity in all_of_them:
             entity.clone_to(other=target)
-    # from IPython import embed
-    # embed()
 
 
-def duplicate_with_opening_balance(old: str, target: str) -> None:
-    """Create a target Gnucash file."""
+def duplicate_with_opening_balance(old: str, target: str, accounts: Optional[dict] = None) -> None:
+    """Create a target Gnucash file.
+
+Parameters
+----------
+
+accounts: dict, optional
+    The accounts where transactions of some types shall be booked.
+"""
     target = os.path.abspath(target)
     target_sqlite = "sqlite3://" + target
 
@@ -408,6 +435,8 @@ def _parse_arguments():
                         type=str)
     parser.add_argument('-o', '--outfile', help="Filename where the duplicate shall be written.",
                         type=str)
+    parser.add_argument('--target-asset', help="Where to book the assets.  For example: "
+                        )
 
     parsed = parser.parse_args()
 
@@ -427,7 +456,10 @@ def main():
     assert args.infile, "Must give a valid infile."
     assert args.outfile, "Must give a valid outfile."
 
-    duplicate_with_opening_balance(old=args.infile, target=args.outfile)
+    target_accounts = {
+        "asset": args.target_asset,
+    }
+    duplicate_with_opening_balance(old=args.infile, target=args.outfile, accounts=target_accounts)
 
 
 if __name__ == "__main__":
