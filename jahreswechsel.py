@@ -415,8 +415,6 @@ def _parse_arguments():
         config = configparser.ConfigParser()
         config.read_file(open(parsed.conf))
         parser.set_defaults(**config["DEFAULT"])
-        # from IPython import embed
-        # embed()
 
         parsed = parser.parse_args()
 
@@ -428,6 +426,7 @@ def main():
     args = _parse_arguments()
     assert args.infile, "Must give a valid infile."
     assert args.outfile, "Must give a valid outfile."
+
     duplicate_with_opening_balance(old=args.infile, target=args.outfile)
 
 
