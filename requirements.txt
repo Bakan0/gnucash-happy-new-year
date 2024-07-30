@@ -1,0 +1,5 @@
+# -*- mode:conf; -*-
+gnucash
+
+# Testing
+pytest
