@@ -44,7 +44,14 @@ from typing import Optional
 
 import gnucash
 from gnucash import (
-    Session, Account, Transaction, Split, GncNumeric, SessionOpenMode)
+    Account,
+    GncCommodity,
+    GncNumeric,
+    Transaction,
+    Session,
+    SessionOpenMode,
+    Split,
+)
 from gnucash.gnucash_core_c import \
     GNC_DENOM_AUTO, GNC_HOW_DENOM_EXACT
 # ACCT_TYPE_ASSET, ACCT_TYPE_BANK, ACCT_TYPE_CASH, ACCT_TYPE_CHECKING, \
@@ -387,6 +394,26 @@ is appended to the last account component.
     opening_trans.CommitEdit()
 
 
+def get_main_currency(balances: dict) -> GncCommodity:
+    """Get the main currency from the balances.
+
+For the time being, this is simply the first one to be found.
+
+Parameters
+----------
+balances : dict
+    A dict of balances.  Balance types are the keys.
+    """
+    for balance in balances.values():
+        if not balance:
+            continue
+        keys = list(balance.keys())
+        for key in keys:
+            if key[0] == "CURRENCY":
+                return key
+    return None
+
+
 def duplicate_business(old: gnucash.Book, target: gnucash.Book) -> None:
     """Duplicate all customers, vendors etc.
 
@@ -480,20 +507,20 @@ accounts: dict, optional
         for a_type, opening_balance_per_currency in opening_balances_per_type_and_curr.items():
             if not opening_balance_per_currency:
                 continue
-            if PREFERRED_CURRENCY in opening_balance_per_currency:
-                opening_trans, opening_amount = opening_balance_per_currency[PREFERRED_CURRENCY]
+            if main_currency in opening_balance_per_currency:
+                opening_trans, opening_amount = opening_balance_per_currency[main_currency]
                 create_opening_balance_transaction(
-                    commodtable, *PREFERRED_CURRENCY,
+                    commodtable, *main_currency,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
                     is_main_currency=True)
-                del opening_balance_per_currency[PREFERED_CURRENCY]
+                del opening_balance_per_currency[main_currency]
 
             old_book = original_book_session.get_book()
 
             for (namespace, mnemonic), (opening_trans, opening_amount) in (
                     opening_balance_per_currency.items()):
-                simple_opening_name_used = create_opening_balance_transaction(
+                create_opening_balance_transaction(
                     commodtable, namespace, mnemonic,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
@@ -509,9 +536,9 @@ def _parse_arguments():
     parser.add_argument('-c', '--conf', help="Config file which for additional options."
                         )
     parser.add_argument("-i", "--infile", help="Input file (of the old year / booking period).",
-                        type=str)
+                        type=str, required=True)
     parser.add_argument('-o', '--outfile', help="Filename where the duplicate shall be written.",
-                        type=str)
+                        type=str, required=True)
     parser.add_argument('--target-asset', help=("Where to book the assets.  For example: 'Opening"
                                                 ":Assets'")
                         )
