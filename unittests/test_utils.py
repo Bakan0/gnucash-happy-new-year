@@ -34,10 +34,10 @@ def test_printify():
 
     # empty transaction
     empty_tr = Transaction(book)
-    tr_str = printify_transaction(empty_tr).strip()
-    print(tr_str)
-    assert len(tr_str) == 61
-    assert tr_str.split("\n")[-1] == "Imbalance: 0.00"
+    tr_str = printify_transaction(empty_tr)
+    print("\n" + tr_str)
+    assert len(tr_str.strip()) == 61
+    assert tr_str.strip().split("\n")[-1] == "Imbalance: 0.00"
 
     # a small transaction
     tbl = book.get_table()
@@ -47,13 +47,19 @@ def test_printify():
     acct_root.append_child(acct)
     acct.SetName("Hello")
     acct.SetCommodity(curr)
+    acct.SetType(3)
+
     spl = Split(book)
-    spl.SetAmount(GncNumeric(12.34))
     spl.SetAccount(acct)
+    spl.SetAmount(GncNumeric(12.34))
+    spl.SetValue(GncNumeric(12.34))
     tr = Transaction(book)
-    from IPython import embed
-    embed()
-
+    tr.BeginEdit()
     tr.SetCurrency(curr)
-
     spl.SetParent(tr)
+
+    tr_str = printify_transaction(tr)
+    print("\n" + tr_str)
+    parts = tr_str.split("\n")
+    assert parts[0].strip() == "12.34  |  Hello"
+    assert parts[-1] == "Imbalance: 12.34"
