@@ -27,6 +27,7 @@
 #   @brief Replicate the account structure of a
 #   book and apply basis opening balances from the original
 
+from IPython import embed
 import argparse
 import configparser
 import os
@@ -182,6 +183,21 @@ OPENING_BALANCE_ACCOUNT = ('Equity', 'Opening Balances')
 PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE = ("CURRENCY", "CAD")
 
 
+def printify_transaction(trans: Transaction) -> str:
+    """Create a nice string from a transaction.
+    """
+    lines = []
+    for split in trans.GetSplitList():
+        acct = split.GetAccount()
+        lines.append(f"{float(split.GetValue()): >10.2f}  |  {acct.get_full_name()}")
+
+    result = ("\n".join(lines) + "\n" + "-" * (10+5+30) + "\n"
+              + f"Imbalance: {float(trans.GetImbalanceValue()):.2f}")
+    # from IPython import embed
+    # embed()
+    return result
+
+
 def initialize_split(book, value, account, trans):
     split = Split(book)
     split.SetValue(value)
@@ -279,6 +295,7 @@ def recursively_build_account_tree(original_parent_account,
 
 
 def reconstruct_account_name_with_mnemonic(account_tuple, mnemonic):
+    """Append the mnemonic to the last account tuple component and return it (as list)."""
     account_pieces = list(account_tuple)
     account_pieces[len(account_pieces) - 1] += " - " + mnemonic
     return account_pieces
@@ -329,24 +346,30 @@ The raised exception has ``extra_string`` as a suffix.
 def create_opening_balance_transaction(commodtable, namespace, mnemonic,
                                        new_book_root, new_book,
                                        opening_trans, opening_amount,
-                                       simple_opening_name_used: bool):
-    """Put the opening balance into an account in the new book."""
+                                       is_main_currency: bool) -> None:
+    """Put the opening balance into an account in the new book.
+
+If ``is_main_currency`` is True, the accounts are used as normal.  Otherwise, the currency mnemonic
+is appended to the last account component.
+    """
     currency = commodtable.lookup(namespace, mnemonic)
     assert (currency.get_instance() is not None)
 
-    account_pieces = reconstruct_account_name_with_mnemonic(
+    mnemonic_account_pieces = reconstruct_account_name_with_mnemonic(
         OPENING_BALANCE_ACCOUNT, mnemonic)
-    if simple_opening_name_used:
-        opening_account = find_or_make_account(account_pieces,
-                                               new_book_root, new_book, currency)
-    else:
+    # from IPython import embed
+    # embed()
+
+    if is_main_currency:
         opening_account = find_or_make_account(OPENING_BALANCE_ACCOUNT,
                                                new_book_root, new_book, currency)
-        simple_opening_name_used = True
         if opening_account is None:
-            opening_account = find_or_make_account(account_pieces,
+            opening_account = find_or_make_account(mnemonic_account_pieces,
                                                    new_book_root, new_book, currency)
-    choke_on_none_for_no_account(opening_account, ', '.join(account_pieces))
+    else:
+        opening_account = find_or_make_account(mnemonic_account_pieces,
+                                               new_book_root, new_book, currency)
+    choke_on_none_for_no_account(opening_account, ', '.join(mnemonic_account_pieces))
 
     # we don't need to use the opening balance account at all if all
     # the accounts being given an opening balance balance out
@@ -358,8 +381,6 @@ def create_opening_balance_transaction(commodtable, namespace, mnemonic,
     opening_trans.SetCurrency(currency)
     opening_trans.SetDescription("Opening Balance")
     opening_trans.CommitEdit()
-
-    return simple_opening_name_used
 
 
 def duplicate_business(old: gnucash.Book, target: gnucash.Book) -> None:
@@ -390,12 +411,16 @@ target: gnucash.Book
 def duplicate_with_opening_balance(old: str, target: str, accounts: Optional[dict] = None) -> None:
     """Create a target Gnucash file.
 
+The preferred (or first, if there is no preferred one or that does not match) currency will go
+straight into the opening accounts, all other currencies will have their account names suffixed.
+
 Parameters
 ----------
 
 accounts: dict, optional
     The accounts where transactions of some types shall be booked.
-"""
+
+    """
     target = os.path.abspath(target)
     target_sqlite = "sqlite3://" + target
 
@@ -437,30 +462,38 @@ accounts: dict, optional
         )
 
         for a_type, opening_balance_per_currency in opening_balances_per_type_and_curr.items():
+            name = str(a_type)
+            if isinstance(a_type, AcctType):
+                name = a_type.name
+            print(f"\n===============\n{name}\n===============")
+            for (_, mnemonic), (trans, balance) in opening_balance_per_currency.items():
+                print(f"== {mnemonic} ==")
+                print(f"{float(balance)}")
+                print(printify_transaction(trans))
+
+        main_currency = get_main_currency(opening_balances_per_type_and_curr)
+
+        for a_type, opening_balance_per_currency in opening_balances_per_type_and_curr.items():
             if not opening_balance_per_currency:
                 continue
-            (namespace, mnemonic) = PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE
-            if (namespace, mnemonic) in opening_balance_per_currency:
-                opening_trans, opening_amount = opening_balance_per_currency[
-                    (namespace, mnemonic)]
-                simple_opening_name_used = create_opening_balance_transaction(
-                    commodtable, namespace, mnemonic,
+            if PREFERRED_CURRENCY in opening_balance_per_currency:
+                opening_trans, opening_amount = opening_balance_per_currency[PREFERRED_CURRENCY]
+                create_opening_balance_transaction(
+                    commodtable, *PREFERRED_CURRENCY,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
-                    False)
-                del opening_balance_per_currency[PREFERED_CURRENCY_FOR_SIMPLE_OPENING_BALANCE]
-            else:
-                simple_opening_name_used = False
+                    is_main_currency=True)
+                del opening_balance_per_currency[PREFERED_CURRENCY]
 
             old_book = original_book_session.get_book()
 
-            for (namespace, mnemonic), (opening_trans, opening_amount) in \
-                    opening_balance_per_currency.items():
+            for (namespace, mnemonic), (opening_trans, opening_amount) in (
+                    opening_balance_per_currency.items()):
                 simple_opening_name_used = create_opening_balance_transaction(
                     commodtable, namespace, mnemonic,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
-                    simple_opening_name_used)
+                    is_main_currency=False)
 
         duplicate_business(old=old_book, target=target_book)
 
