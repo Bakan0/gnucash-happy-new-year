@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# Utility for creating a new book, for example at the beginning of the year.
-#
-# Based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
-#
 # Copyright (C) 2009, 2010 Mark Jenkins, ParIT Worker Co-operative <transparency@parit.ca>
 # Copyright (C) 2024 Quazgar <quazgar@posteo.de>
 #
@@ -20,12 +16,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# @author Mark Jenkins, ParIT Worker Co-operative <mark@parit.ca>
-# @author Quazgar <quazgar@posteo.de>
-#
-# @file
-#   @brief Replicate the account structure of a
-#   book and apply basis opening balances from the original
+
+"""
+Utility for creating a new book, for example at the beginning of the year.
+
+Based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
+
+@author Mark Jenkins, ParIT Worker Co-operative <mark@parit.ca>
+@author Quazgar <quazgar@posteo.de>
+
+@file
+  @brief Replicate the account structure of a
+  book and apply basis opening balances from the original
+"""
+
 
 from IPython import embed
 import argparse
