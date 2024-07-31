@@ -30,7 +30,6 @@ Based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
   book and apply basis opening balances from the original
 """
 
-from IPython import embed
 import argparse
 import configparser
 import os

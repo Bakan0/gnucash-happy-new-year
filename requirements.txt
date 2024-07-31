@@ -1,5 +1,6 @@
 # -*- mode:conf; -*-
-gnucash
+
+# gnucash  # Unfortunately, this comes only with the full gnucash + python3-gnucash packages.
 
 # Testing
 pytest
