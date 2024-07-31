@@ -42,7 +42,7 @@ funktionieren.
 ## Weitere Optionen: Zielkonten und Konfiguration ##
 
 Es kann wünschenswert sein, die Eröffnungstransaktion in mehrere Teile aufzuteilen, z. B. um
-getrennte Buchungen für Aktiva und Passiva zu haben.  Zu diesem Zweck können Sie *Zielkonten* für
+getrennte Buchungen für Aktiva und Passiva zu haben.  Zu diesem Zweck kannst du *Zielkonten* für
 bestimmte Arten von Konten definieren.  Eine Möglichkeit für diese Definitionen sind die
 Befehlszeilenoptionen `--target-asset`, `--target-liability` usw., denen Kontonamen für die
 Eröffnungsbuchungen eines bestimmten Typs zugeordnet werden (getrennt durch Doppelpunkte "`:`").
