@@ -344,7 +344,7 @@ opening_balances : dict[AcctType, dict[tuple, tuple]]
         for (ns, mnemonic), (trans, balance) in opening_balance_per_currency.items():
             print(f"== {mnemonic} ==")
             print(f"{float(balance)}")
-            if float(balance) and a_type.shortname() in opening_balance_accounts:
+            if float(balance) and a_type != "*" and a_type.shortname() in opening_balance_accounts:
                 bal_acct_names = opening_balance_accounts.get(a_type.shortname()).split(":")
                 balance_account = get_account_recursively(target_book, bal_acct_names,
                                                           default_type=a_type,
@@ -611,30 +611,48 @@ balance_accounts: dict, optional
 
 def _parse_arguments():
     """Parse the command line."""
+    required = {}
     parser = argparse.ArgumentParser(description="Create a new Gnucash file from the account"
                                      " balances of an existing file.")
-    parser.add_argument('-c', '--conf', help="Config file which for additional options."
-                        )
-    parser.add_argument("-i", "--infile", help="Input file (of the old year / booking period).",
-                        type=str, required=True)
-    parser.add_argument('-o', '--outfile', help="Filename where the duplicate shall be written.",
-                        type=str, required=True)
-    parser.add_argument('--target-asset', help=("Where to book the assets.  For example: 'Opening"
-                                                ":Assets'")
-                        )
-    parser.add_argument('--target-liability', help=("Where to book the liabilities.  For example: "
-                                                    "'Opening:Liabilities'")
-                        )
+    conf_args = {"help": "Config file which for additional options."}
+    parser.add_argument('-c', '--conf', **conf_args)
+    required["infile"] = parser.add_argument("-i", "--infile",
+                                             help="Input file (of the old year / booking period).",
+                                             type=str, required=True)
+    required["outfile"] = parser.add_argument('-o', '--outfile',
+                                              help="Filename where the duplicate shall be written.",
+                                              type=str, required=True)
+    parser.add_argument('--target-asset',
+                        help="Where to book the assets.  For example: 'Opening:Assets'")
+    parser.add_argument('--target-liability',
+                        help="Where to book the liabilities.  For example: 'Opening:Liabilities'")
 
-    parsed = parser.parse_args()
+    # parse --conf first, but ignore any problems on the way
+    class SimpleParser(argparse.ArgumentParser):
+        def error(self, message):
+            raise NotImplementedError(message)
+        def print_usage(self, file=None):
+            self.error("print_usage")
+        def print_help(self, file=None):
+            self.error("print_help")
 
-    if parsed.conf:
+    conf_parser = SimpleParser()
+    conf_parser.add_argument("-c", "--conf", **conf_args)
+    try:
+        parsed = conf_parser.parse_known_args()[0]
+    except NotImplementedError as nie:
+        parsed = None
+
+    if parsed and parsed.conf:
         config = configparser.ConfigParser()
         with open(parsed.conf, encoding="utf-8") as conf_file:
             config.read_file(conf_file)
         parser.set_defaults(**config["DEFAULT"])
+        for name, arg in required.items():
+            if name in config["DEFAULT"]:
+                arg.required = False
 
-        parsed = parser.parse_args()
+    parsed = parser.parse_args()
 
     return parsed
 
