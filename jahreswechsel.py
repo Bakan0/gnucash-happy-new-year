@@ -30,7 +30,6 @@ Based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
   book and apply basis opening balances from the original
 """
 
-
 from IPython import embed
 import argparse
 import configparser
@@ -45,6 +44,7 @@ from typing import Optional
 import gnucash
 from gnucash import (
     Account,
+    Book,
     GncCommodity,
     GncNumeric,
     Transaction,
@@ -138,11 +138,21 @@ class AcctType(IntEnum):
     ACCT_TYPE_CREDITLINE = 18
 
     @classmethod
-    def shortname(cls, name: str):
+    def from_shortname(cls, name: str):
         try:
             return cls[f"ACCT_TYPE_{name.upper()}"]
         except KeyError:
             raise KeyError(name)
+
+    def shortname(self) -> str:
+        """Return the shortname for this account type.
+
+For example, ACCT_TYPE_ASSET will return ``asset``.
+        """
+        prefix = "ACCT_TYPE_"
+        if self.name.startswith(prefix):
+            return self.name[len(prefix):].lower()
+        return self.name
 
 
 # possible account types of interest for opening balances
@@ -209,12 +219,45 @@ def printify_transaction(trans: Transaction) -> str:
     return result
 
 
-def initialize_split(book, value, account, trans):
+def add_split_to_transaction(book, value, account, trans):
     split = Split(book)
     split.SetValue(value)
     split.SetAccount(account)
     split.SetParent(trans)
     return split
+
+def get_account_recursively(book: Book, account_names: list[str], default_type: AcctType,
+                            default_commodity: tuple[str, str],
+                            base_account: Optional[Account] = None) -> Account:
+    """Get the account at the given path, creating accounts as necessary.
+
+Note that this function assumes that there are no name collisions, it always uses the first
+candidate with a matching name.
+    """
+    if not base_account:
+        base_account = book.get_root_account()
+    if not account_names:
+        return base_account
+    account_names = list(account_names)
+    assert account_names
+    name = account_names.pop(0)
+
+    # Find or create the next account.
+    next_account = None
+    for child in base_account.get_children():
+        if child.name == name:
+            next_account = child
+            break
+    if next_account is None:
+        next_account = Account(book)
+        base_account.append_child(next_account)
+        next_account.SetName(name)
+        next_account.SetType(int(default_type))
+        table = book.get_table()
+        next_account.SetCommodity(table.lookup(*default_commodity))
+
+    return get_account_recursively(book, account_names, default_type, default_commodity,
+                                   base_account=next_account)
 
 
 def record_opening_balance(original_account, new_account, new_book,
@@ -227,7 +270,7 @@ Every value is a tuple of a transaction in ``new_book`` and the total balance (a
 transaction.
 
     """
-    acct_type = new_account.GetType()
+    acct_type = AcctType(new_account.GetType())
     # create an opening balance if the account type is right
     if acct_type in ACCOUNT_TYPES_TO_OPEN:
         final_balance = original_account.GetBalance()
@@ -249,16 +292,69 @@ transaction.
                     trans, GncNumeric(0, 1))
             trans, total = opening_balance_per_currency[commodity_tuple]
 
-            new_total = total.sub(
-                final_balance,
-                GNC_DENOM_AUTO, GNC_HOW_DENOM_EXACT)
+            new_total = total.sub(final_balance, GNC_DENOM_AUTO, GNC_HOW_DENOM_EXACT)
 
-            initialize_split(
-                new_book,
-                final_balance,
-                new_account, trans)
-            opening_balance_per_currency[commodity_tuple] = \
-                (trans, new_total)
+            add_split_to_transaction(new_book, final_balance, new_account, trans)
+            opening_balance_per_currency[commodity_tuple] = (trans, new_total)
+
+
+def build_balanced_account_tree(original_book: Book,
+                                target_book: Book,
+                                opening_balance_accounts: dict,
+                                ) -> dict[AcctType, dict[tuple, tuple]]:
+    """
+Duplicate account tree to target book and return transactions for the opening balances.
+
+Parameters
+----------
+original_book : Book
+  The original book, this will be used read-only.
+target_book : Book
+  Book where the (empty) accounts are written into.
+opening_balance_accounts : dict
+  Accounts where final balances for specific account types shall be written into.
+
+Returns
+-------
+opening_balances : dict[AcctType, dict[tuple, tuple]]
+  Nested dict with the opening balance transactions.  The keys are
+  - Account type
+  - Currency tuple
+  and the values are tuples with the transaction itself and the imbalance value of the transaction.
+    """
+    # Initialize opening balance dict
+    opening_balance_per_type_and_curr: dict = {
+        AcctType.from_shortname(typename): {} for typename in opening_balance_accounts
+    }
+    opening_balance_per_type_and_curr["*"] = {}
+
+    recursively_build_account_tree(
+        original_book.get_root_account(),
+        target_book.get_root_account(),
+        target_book,
+        target_book.get_table(),
+        opening_balance_per_type_and_curr,
+        account_types_to_open=ACCOUNT_TYPES_TO_OPEN
+    )
+    for a_type, opening_balance_per_currency in opening_balance_per_type_and_curr.items():
+        name = str(a_type)
+        if isinstance(a_type, AcctType):
+            name = a_type.name
+        print(f"\n===============\n{name}\n===============")
+        for (ns, mnemonic), (trans, balance) in opening_balance_per_currency.items():
+            print(f"== {mnemonic} ==")
+            print(f"{float(balance)}")
+            if float(balance) and a_type.shortname() in opening_balance_accounts:
+                bal_acct_names = opening_balance_accounts.get(a_type.shortname()).split(":")
+                balance_account = get_account_recursively(target_book, bal_acct_names,
+                                                          default_type=a_type,
+                                                          default_commodity=(ns, mnemonic))
+                add_split_to_transaction(target_book, balance, balance_account, trans)
+                balance.get_instance().num = 0
+
+            print(printify_transaction(trans))
+
+    return opening_balance_per_type_and_curr
 
 
 def recursively_build_account_tree(original_parent_account,
@@ -266,8 +362,13 @@ def recursively_build_account_tree(original_parent_account,
                                    new_book,
                                    new_commodity_table,
                                    opening_balance_per_type_and_curr,
-                                   # opening_balance_accounts,
                                    account_types_to_open):
+    """Create duplicate account tree in new book and store all account values.
+
+This function takes ``original_parent_account`` and recursively creates duplicates of all children
+in ``new_book``, in ``new_parent_account``. At the same time the account's amount is stored as a
+split in the appropriate transaction in the nested dict ``opening_balance_per_type_and_curr``.
+    """
 
     for child in original_parent_account.get_children():
         original_account = child
@@ -354,10 +455,10 @@ The raised exception has ``extra_string`` as a suffix.
         raise Exception("account currency and name mismatch, " + extra_string)
 
 
-def create_opening_balance_transaction(commodtable, namespace, mnemonic,
-                                       new_book_root, new_book,
-                                       opening_trans, opening_amount,
-                                       is_main_currency: bool) -> None:
+def apply_opening_balance_transaction(commodtable, namespace, mnemonic,
+                                      new_book_root, new_book,
+                                      opening_trans, opening_amount,
+                                      is_main_currency: bool) -> None:
     """Put the opening balance into an account in the new book.
 
 If ``is_main_currency`` is True, the accounts are used as normal.  Otherwise, the currency mnemonic
@@ -385,8 +486,7 @@ is appended to the last account component.
     # we don't need to use the opening balance account at all if all
     # the accounts being given an opening balance balance out
     if opening_amount.num() != 0:
-        initialize_split(new_book, opening_amount, opening_account,
-                         opening_trans)
+        add_split_to_transaction(new_book, opening_amount, opening_account, opening_trans)
 
     opening_trans.SetDate(*OPENING_DATE)
     opening_trans.SetCurrency(currency)
@@ -439,7 +539,8 @@ target: gnucash.Book
             entity.clone_to(other=target)
 
 
-def duplicate_with_opening_balance(old: str, target: str, accounts: Optional[dict] = None) -> None:
+def duplicate_with_opening_balance(old: str, target: str,
+                                   balance_accounts: Optional[dict] = None) -> None:
     """Create a target Gnucash file.
 
 The preferred (or first, if there is no preferred one or that does not match) currency will go
@@ -448,8 +549,8 @@ straight into the opening accounts, all other currencies will have their account
 Parameters
 ----------
 
-accounts: dict, optional
-    The accounts where transactions of some types shall be booked.
+balance_accounts: dict, optional
+    The accounts where opening transactions of some types shall be booked against.
 
     """
     target = os.path.abspath(target)
@@ -466,50 +567,29 @@ accounts: dict, optional
 
     with (Session(old, SessionOpenMode.SESSION_READ_ONLY) as original_book_session,
           Session(target_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as target_book_session):
-        target_book = target_book_session.get_book()
-        target_book_root = target_book.get_root_account()
-
-        commodtable = target_book.get_table()
         # we discovered that if we didn't have this save early on, there would
         # be trouble later
         target_book_session.save()
+        target_book = target_book_session.get_book()
 
         #######################
         # Make dict of balances
         #######################
-        # opening_balance_per_currency: dict = {}
-        opening_balances_per_type_and_curr: dict = {
-            AcctType.shortname(typename): {} for typename in accounts
-        }
-        opening_balances_per_type_and_curr["*"] = {}
-        recursively_build_account_tree(
-            original_book_session.get_book().get_root_account(),
-            target_book_root,
-            target_book,
-            commodtable,
-            opening_balances_per_type_and_curr,
-            # opening_balance_accounts=accounts,
-            account_types_to_open=ACCOUNT_TYPES_TO_OPEN
+        opening_balance_per_type_and_curr = build_balanced_account_tree(
+            original_book=original_book_session.get_book(),
+            target_book=target_book,
+            opening_balance_accounts=balance_accounts,
         )
 
-        for a_type, opening_balance_per_currency in opening_balances_per_type_and_curr.items():
-            name = str(a_type)
-            if isinstance(a_type, AcctType):
-                name = a_type.name
-            print(f"\n===============\n{name}\n===============")
-            for (_, mnemonic), (trans, balance) in opening_balance_per_currency.items():
-                print(f"== {mnemonic} ==")
-                print(f"{float(balance)}")
-                print(printify_transaction(trans))
-
-        main_currency = get_main_currency(opening_balances_per_type_and_curr)
-
-        for a_type, opening_balance_per_currency in opening_balances_per_type_and_curr.items():
+        main_currency = get_main_currency(opening_balance_per_type_and_curr)
+        target_book_root = target_book.get_root_account()
+        commodtable = target_book.get_table()
+        for opening_balance_per_currency in opening_balance_per_type_and_curr.values():
             if not opening_balance_per_currency:
                 continue
             if main_currency in opening_balance_per_currency:
                 opening_trans, opening_amount = opening_balance_per_currency[main_currency]
-                create_opening_balance_transaction(
+                apply_opening_balance_transaction(
                     commodtable, *main_currency,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
@@ -520,7 +600,7 @@ accounts: dict, optional
 
             for (namespace, mnemonic), (opening_trans, opening_amount) in (
                     opening_balance_per_currency.items()):
-                create_opening_balance_transaction(
+                apply_opening_balance_transaction(
                     commodtable, namespace, mnemonic,
                     target_book_root, target_book,
                     opening_trans, opening_amount,
@@ -550,7 +630,8 @@ def _parse_arguments():
 
     if parsed.conf:
         config = configparser.ConfigParser()
-        config.read_file(open(parsed.conf))
+        with open(parsed.conf, encoding="utf-8") as conf_file:
+            config.read_file(conf_file)
         parser.set_defaults(**config["DEFAULT"])
 
         parsed = parser.parse_args()
@@ -568,7 +649,8 @@ def main():
         "asset": args.target_asset,
         "liability": args.target_liability
     }
-    duplicate_with_opening_balance(old=args.infile, target=args.outfile, accounts=target_accounts)
+    duplicate_with_opening_balance(old=args.infile, target=args.outfile,
+                                   balance_accounts=target_accounts)
 
 
 if __name__ == "__main__":
