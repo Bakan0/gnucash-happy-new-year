@@ -344,7 +344,7 @@ opening_balances : dict[AcctType, dict[tuple, tuple]]
         for (ns, mnemonic), (trans, balance) in opening_balance_per_currency.items():
             print(f"== {mnemonic} ==")
             print(f"{float(balance)}")
-            if float(balance) and a_type.shortname() in opening_balance_accounts:
+            if float(balance) and a_type != "*" and a_type.shortname() in opening_balance_accounts:
                 bal_acct_names = opening_balance_accounts.get(a_type.shortname()).split(":")
                 balance_account = get_account_recursively(target_book, bal_acct_names,
                                                           default_type=a_type,

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Can split opening transaction into multiple parts, possibly with different reference accounts.
 - Unit tests.
 - Documentation.
+- CI pipeline.
 
 ### Changed ###
 
