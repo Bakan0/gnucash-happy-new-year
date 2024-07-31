@@ -110,16 +110,19 @@ class Customer(Entity):
         """Set missing properties.
 
 The missing properties are:
+- Credit
+- Discount
 - Notes
 - TaxIncluded
 - Terms
 
 Parameters
 ----------
-other: Vendor
+other: Customer
     The entity to update.
         """
-        # FIXME correct properties.
+        other._base.SetCredit(self._base.GetCredit())
+        other._base.SetDiscount(self._base.GetDiscount())
         other._base.SetNotes(self._base.GetNotes())
         other._base.SetTaxIncluded(self._base.GetTaxIncluded())
         other._base.SetTerms(self._base.GetTerms())
@@ -155,16 +158,11 @@ class Employee(Entity):
         """Set missing properties.
 
 The missing properties are:
-- Notes
-- TaxIncluded
-- Terms
+- Workday
 
 Parameters
 ----------
-other: Vendor
+other: Employee
     The entity to update.
         """
-        # FIXME correct properties.
-        other._base.SetNotes(self._base.GetNotes())
-        other._base.SetTaxIncluded(self._base.GetTaxIncluded())
-        other._base.SetTerms(self._base.GetTerms())
+        other._base.SetWorkday(self._base.GetWorkday())
