@@ -24,7 +24,7 @@ from gnucash import (
 )
 
 import utils  # set sys.path by importing
-from jahreswechsel import (
+from new_year import (
     printify_transaction,
 )
 

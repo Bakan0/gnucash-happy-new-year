@@ -226,6 +226,7 @@ def add_split_to_transaction(book, value, account, trans):
     split.SetParent(trans)
     return split
 
+
 def get_account_recursively(book: Book, account_names: list[str], default_type: AcctType,
                             default_commodity: tuple[str, str],
                             base_account: Optional[Account] = None) -> Account:
@@ -563,7 +564,7 @@ balance_accounts: dict, optional
         # new_book_session.save()
         target_book_session.end()
     else:
-        print(f"Warnung! Datei {target} existiert bereits.")
+        print(f"Warning! File {target} exists already.")
 
     with (Session(old, SessionOpenMode.SESSION_READ_ONLY) as original_book_session,
           Session(target_sqlite, SessionOpenMode.SESSION_NORMAL_OPEN) as target_book_session):
@@ -642,9 +643,6 @@ def _parse_arguments():
 def main():
 
     args = _parse_arguments()
-    assert args.infile, "Must give a valid infile."
-    assert args.outfile, "Must give a valid outfile."
-
     target_accounts = {
         "asset": args.target_asset,
         "liability": args.target_liability

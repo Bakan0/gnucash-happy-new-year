@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added ###
 
-- Initial version, beased upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
+- Initial version, based upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
+- Also duplicate business entities such as vendors, customers, employees.
 - Can split opening transaction into multiple parts, possibly with different reference accounts.
 - Unit tests.
 - Documentation.
