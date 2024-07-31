@@ -1,0 +1,28 @@
+# Changelog #
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased] ##
+
+### Added ###
+
+- Initial version, beased upon `new_book_with_opening_balances.py` from the Gnucash Python examples.
+- Can split opening transaction into multiple parts, possibly with different reference accounts.
+- Unit tests.
+- Documentation.
+
+### Changed ###
+
+- A lot of code cleanup, type hints, internal documentation.
+
+### Deprecated ###
+
+### Removed ###
+
+### Fixed ###
+
+### Security ###
+
