@@ -9,13 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added ###
 
+- [#1](https://gitlab.com/wiese28/gnucash-happy-new-year/-/issues/1) Full program test.
+
 ### Changed ###
+
+- Renamed a lot of files and directories, for example the example files.
 
 ### Deprecated ###
 
 ### Removed ###
 
 ### Fixed ###
+
+- More complete business entity cloning.
 
 ### Security ###
 

@@ -36,4 +36,4 @@ unit_tests:
   stage: test
   image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   script:
-    - pytest unittests
+    - pytest tests
