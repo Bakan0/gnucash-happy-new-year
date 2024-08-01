@@ -31,11 +31,11 @@ funktionieren.
 
 - Um eine Liste der Optionen zu erhalten, rufe `./new_year.py -h` auf.
 - Um eine neue Datei aus einer vorhandenen zu erstellen, benutze die Optionen `-i` und `-o`:  
-  `./new_year.py -i test_data/existing.gnucash -o out.gnucash`
-  - Damit wird die GnuCash-Datei `test_data/existing.gnucash` gelesen und aus ihrem Inhalt eine neue
-    Datei `out.gnucash` erstellt.
-  - Du kannst nun `out.gnucash` mit dem GnuCash-Programm öffnen, um die Ergebnisse anzuschauen.
-  - Wenn `out.gnucash` bereits existiert, wird eine Warnung ausgegeben und die Buchungen werden
+  `./new_year.py -i examples/lastyear.gnucash -o new.gnucash`
+  - Damit wird die GnuCash-Datei `examples/lastyear.gnucash` gelesen und aus ihrem Inhalt eine neue
+    Datei `new.gnucash` erstellt.
+  - Du kannst nun `new.gnucash` mit dem GnuCash-Programm öffnen, um die Ergebnisse anzuschauen.
+  - Wenn `new.gnucash` bereits existiert, wird eine Warnung ausgegeben und die Buchungen werden
     trotzdem auf die Ausgabedatei angewendet, möglicherweise werden dabei mehr Daten hinzugefügt als
     du willst!
 
@@ -77,7 +77,7 @@ wie du dazu beitragen kannst, diese Software noch besser zu machen:
 Im Moment bestehen die Tests aus wenig mehr als einem Proof of Concept.  Das sollte verbessert
 werden.
 
-Um die Tests auszuführen, muss pytest installiert und aufgerufen werden: `pytest unittests`
+Um die Tests auszuführen, muss pytest installiert und aufgerufen werden: `pytest tests`
 
-Wenn du neue Tests schreiben willst, kannst du `import utils` benutzen, um `sys.path` entsprechend
-zu setzen.
+Wenn du neue Tests schreiben willst, kannst du `import utils` benutzen, um `sys.path` passend zu
+setzen.

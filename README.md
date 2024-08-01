@@ -27,11 +27,11 @@ Make sure that you have GnuCash and its Python library installed.  You can test 
 
 - To get a list of options, run `./new_year.py -h`
 - To create a new file from an existing one, use the `-i` and `-o` options:  
-  `./new_year.py -i test_data/existing.gnucash -o out.gnucash`
-  - This will read the GnuCash file `test_data/existing.gnucash` and create a new file `out.gnucash`
+  `./new_year.py -i examples/lastyear.gnucash -o new.gnucash`
+  - This will read the GnuCash file `examples/lastyear.gnucash` and create a new file `new.gnucash`
     from its content.
-  - You may now open `out.gnucash` with the GnuCash program to inspect the results.
-  - If `out.gnucash` exists already, a warning will be printed and the transaction will be applied
+  - You may now open `new.gnucash` with the GnuCash program to inspect the results.
+  - If `new.gnucash` exists already, a warning will be printed and the transaction will be applied
     to the output file nonetheless, possibly adding more data than you want!
 
 ## Advanced: target accounts and configuration ##
@@ -61,13 +61,13 @@ contribute to making this software even better:
   added here.
 - Write tests (see below) for more parts of the code.
 - Refactor the code to be more pythonic and to be a real Python package.  This may also include
-  utilities to make the GnuCash code more straoghtforward to use.
+  utilities to make the GnuCash code more straightforward to use.
 
 ### Testing ###
 
 At the moment, the testing consists of little more than a proof of concept.  This should be
 improved.
 
-To run the tests, install pytest and run: `pytest unittests`
+To run the tests, install pytest and run: `pytest tests`
 
 If you want to write new tests, you can `import utils` to set `sys.path` accordingly.
