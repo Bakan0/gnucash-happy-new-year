@@ -26,11 +26,13 @@ build_image:
         REG_REF:           $REG_REF"
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker pull $REG_REF || true
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $REG_REF -t $DOCKER_IMAGE .
-    - docker tag $DOCKER_IMAGE $REG_SHA
+    # Cache does not seem to work: https://gitlab.com/gitlab-org/gitlab/-/issues/439974
+    - DOCKER_BUILDKIT=0 docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $REG_REF
+      -t $DOCKER_IMAGE .
     - docker tag $DOCKER_IMAGE $REG_REF
-    - docker push $REG_SHA
     - docker push $REG_REF
+    - docker tag $DOCKER_IMAGE $REG_SHA
+    - docker push $REG_SHA
 
 unit_tests:
   stage: test
