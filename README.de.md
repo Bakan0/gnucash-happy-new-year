@@ -22,8 +22,9 @@ in diesem Projekt macht:
 
 ### Voraussetzungen ###
 
-Stelle sicher, dass du GnuCash und seine Python-Bibliothek installiert hast.  Das kannst du
-überprüfen, indem du folgenden Befehl aufrufst:  
+Stelle sicher, dass du GnuCash und seine Python-Bibliotheken installiert hast, sowie das
+sqlite-Backend (`libdbd-sqlite3` auf Debian).  Das kannst du überprüfen, indem du folgenden Befehl
+aufrufst:  
 `python3 -c "import gnucash"`.  Wenn es dabei keine Fehlermeldungen gibt, sollte alles
 funktionieren.
 

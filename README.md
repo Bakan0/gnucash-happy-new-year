@@ -20,7 +20,8 @@ transactions of the year past.  That is exactly what the program in this project
 
 ### Prerequisites ###
 
-Make sure that you have GnuCash and its Python library installed.  You can test this by calling
+Make sure that you have GnuCash and its Python library installed as well as the sqlite backend
+(`libdbd-sqlite3` on Debian).  You can test this by calling  
 `python3 -c "import gnucash"`.  If there are no error messages, everything is should be working.
 
 ### Run the program ###
