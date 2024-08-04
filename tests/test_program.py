@@ -97,10 +97,10 @@ def test_call_new_year(tmp_path, datadir):
 
 
 def test_call_none_acct_type(tmp_path, datadir):
-    """Calling the main function on a file with unhandled account types."""
+    """Calling the main function on a file with empty account types."""
     oldfile = datadir / "very_small.gnucash"
     newfile = tmp_path / "new.gnucash"
-    target_accounts = {  # No handling if "Income"
+    target_accounts = {  # Testing None as account type, for issue #4
         "asset": "Opening:Assets",
         "liability": None,
     }
