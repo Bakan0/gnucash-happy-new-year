@@ -4,6 +4,11 @@
 __pycache__
 .venv
 
-# output files
+# output files and GnuCash data files - NEVER commit personal financial data
 *.log
+*.gnucash
+*.gnucash.*
+*.xac
+*.gnc
+*.LCK
 new.gnucash
